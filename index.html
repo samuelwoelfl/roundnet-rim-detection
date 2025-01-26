@@ -9,22 +9,25 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 66vw;
     }
     #output {
-      margin-top: 20px;
       font-size: 1.2em;
+      margin: 10px 0;
     }
-    canvas {
-      max-width: 100%;
-      margin: 20px auto;
+    #accelerationChart {
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
-  <h1>Accelerometer Test</h1>
-  <p>Überprüfen, ob dein Gerät ein Accelerometer hat.</p>
   <div id="output">Prüfe auf Sensor...</div>
   <canvas id="accelerationChart"></canvas>
 
@@ -66,7 +69,6 @@
 
       startApp() {
         this.showMessage('Accelerometer verfügbar! Live-Daten:');
-        this.createDataContainer();
         this.initChart();
         this.setupDeviceMotionListener();
       }
@@ -75,18 +77,13 @@
         this.$output.text(message);
       }
 
-      createDataContainer() {
-        this.$dataDiv = $('<div id="data"></div>');
-        $('body').append(this.$dataDiv);
-      }
-
       setupDeviceMotionListener() {
         $(window).on('devicemotion', (event) => {
           const { x, y, z } = event.originalEvent.acceleration || {};
           if (x !== null && y !== null && z !== null) {
             this.updateData(x, y, z);
           } else {
-            this.$dataDiv.text('Keine Bewegungsdaten verfügbar.');
+            this.showMessage('Keine Bewegungsdaten verfügbar.');
           }
         });
       }
@@ -94,20 +91,13 @@
       updateData(x, y, z) {
         const timestamp = new Date().toLocaleTimeString();
 
-        // Aktualisiere die Datenanzeige
-        this.$dataDiv.html(`
-          <p>X: ${x.toFixed(2)}</p>
-          <p>Y: ${y.toFixed(2)}</p>
-          <p>Z: ${z.toFixed(2)}</p>
-        `);
-
         // Speichere Daten im Verlauf
         this.dataBuffer.timestamps.push(timestamp);
         this.dataBuffer.x.push(x);
         this.dataBuffer.y.push(y);
         this.dataBuffer.z.push(z);
 
-        // Entferne alte Daten, um die Anzeige flüssig zu halten
+        // Begrenze die Anzahl der Punkte auf 50, um den Graphen übersichtlich zu halten
         if (this.dataBuffer.timestamps.length > 50) {
           this.dataBuffer.timestamps.shift();
           this.dataBuffer.x.shift();
@@ -130,24 +120,28 @@
                 label: 'X-Achse',
                 data: [],
                 borderColor: 'red',
+                borderWidth: 2,
                 fill: false,
               },
               {
                 label: 'Y-Achse',
                 data: [],
                 borderColor: 'green',
+                borderWidth: 2,
                 fill: false,
               },
               {
                 label: 'Z-Achse',
                 data: [],
                 borderColor: 'blue',
+                borderWidth: 2,
                 fill: false,
               },
             ]
           },
           options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
               x: {
                 title: {
@@ -160,6 +154,11 @@
                   display: true,
                   text: 'Beschleunigung (m/s²)'
                 }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
               }
             }
           }
