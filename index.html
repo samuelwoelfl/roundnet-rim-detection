@@ -14,9 +14,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
+      justify-content: flex-start;
+      height: 66vw;
     }
     #output {
       font-size: 1.2em;
@@ -24,20 +23,12 @@
     }
     #accelerationChart {
       width: 100vw;
-      height: 80vh;
+      height: 40vh;
     }
     #data-text {
       font-size: 1em;
       text-align: center;
       margin-top: 10px;
-    }
-    #history {
-      margin-top: 20px;
-      font-size: 0.9em;
-      text-align: center;
-    }
-    .history-entry {
-      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -45,17 +36,12 @@
   <div id="output">Prüfe auf Sensor...</div>
   <canvas id="accelerationChart"></canvas>
   <div id="data-text">Warte auf Daten...</div>
-  <div id="history">
-    <h3>Historie der letzten 10 Sekunden:</h3>
-    <div id="history-entries"></div>
-  </div>
 
   <script>
     class AccelerometerApp {
       constructor() {
         this.$output = $('#output');
         this.$dataText = $('#data-text');
-        this.$historyEntries = $('#history-entries');
         this.dataBuffer = {
           timestamps: [],
           x: [],
@@ -63,7 +49,6 @@
           z: []
         };
         this.chart = null;
-        this.maxHistoryLength = 10;  // Begrenze die Historie auf 10 Einträge
         this.init();
       }
 
@@ -111,61 +96,34 @@
       }
 
       updateData(x, y, z) {
-        const now = Date.now(); // Zeitstempel in Millisekunden
+        const timestamp = new Date().toLocaleTimeString();
 
-        // Speichere die aktuellen Werte im Verlauf
-        this.dataBuffer.timestamps.push(now);
+        // Speichere Daten im Verlauf
+        this.dataBuffer.timestamps.push(timestamp);
         this.dataBuffer.x.push(x);
         this.dataBuffer.y.push(y);
         this.dataBuffer.z.push(z);
 
-        // Entferne Daten, die älter als 10 Sekunden sind
-        const tenSecondsAgo = now - 10000; // 10 Sekunden in Millisekunden
-        while (this.dataBuffer.timestamps[0] < tenSecondsAgo) {
+        // Begrenze die Anzahl der Punkte auf 50, um den Graphen übersichtlich zu halten
+        if (this.dataBuffer.timestamps.length > 500) {
           this.dataBuffer.timestamps.shift();
           this.dataBuffer.x.shift();
           this.dataBuffer.y.shift();
           this.dataBuffer.z.shift();
         }
 
-        // Begrenze die Historie auf die letzten maxHistoryLength Einträge
-        if (this.dataBuffer.timestamps.length > this.maxHistoryLength) {
-          this.dataBuffer.timestamps.shift();
-          this.dataBuffer.x.shift();
-          this.dataBuffer.y.shift();
-          this.dataBuffer.z.shift();
-        }
-
-        // Aktualisiere den Graphen, den Text und die Historie
+        // Aktualisiere den Graphen und den Text
         this.updateChart();
         this.updateDataText(x, y, z);
-        this.updateHistory();
       }
 
-      updateDataText(x, y, z) {
+      updateDataText() {
         this.$dataText.html(`
           <p><strong>Live-Daten:</strong></p>
-          <p>X: ${x.toFixed(2)} m/s²</p>
-          <p>Y: ${y.toFixed(2)} m/s²</p>
-          <p>Z: ${z.toFixed(2)} m/s²</p>
+          <p>X: ${this.dataBuffer.x} m/s²</p>
+          <p>Y: ${this.dataBuffer.y} m/s²</p>
+          <p>Z: ${this.dataBuffer.z} m/s²</p>
         `);
-      }
-
-      updateHistory() {
-        // Bereite die Historie als Text vor und begrenze sie auf maxHistoryLength
-        this.$historyEntries.empty(); // Vorherige Historie löschen
-
-        for (let i = 0; i < this.dataBuffer.timestamps.length; i++) {
-          const timestamp = new Date(this.dataBuffer.timestamps[i]).toLocaleTimeString();
-          const entry = `
-            <div class="history-entry">
-              <strong>${timestamp}</strong>: X = ${this.dataBuffer.x[i].toFixed(2)} m/s², 
-              Y = ${this.dataBuffer.y[i].toFixed(2)} m/s², 
-              Z = ${this.dataBuffer.z[i].toFixed(2)} m/s²
-            </div>
-          `;
-          this.$historyEntries.append(entry);
-        }
       }
 
       initChart() {
@@ -203,17 +161,9 @@
             maintainAspectRatio: false,
             scales: {
               x: {
-                type: 'time',
-                time: {
-                  unit: 'second',
-                  tooltipFormat: 'HH:mm:ss'
-                },
                 title: {
                   display: true,
                   text: 'Zeit'
-                },
-                ticks: {
-                  source: 'auto'
                 }
               },
               y: {
@@ -235,14 +185,7 @@
       }
 
       updateChart() {
-        // Konvertiere die Zeitstempel in ein lesbares Format
-        const labels = this.dataBuffer.timestamps.map((ts) => new Date(ts));
-
-        // Sicherstellen, dass wir nicht versuchen, leere Daten zu übergeben
-        if (this.dataBuffer.x.length === 0) return;
-
-        // Aktualisiere die Daten und Labels im Graphen
-        this.chart.data.labels = labels;
+        this.chart.data.labels = this.dataBuffer.timestamps;
         this.chart.data.datasets[0].data = this.dataBuffer.x;
         this.chart.data.datasets[1].data = this.dataBuffer.y;
         this.chart.data.datasets[2].data = this.dataBuffer.z;
