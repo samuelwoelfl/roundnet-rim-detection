@@ -236,7 +236,10 @@
 
       updateChart() {
         // Konvertiere die Zeitstempel in ein lesbares Format
-        const labels = this.dataBuffer.timestamps.map((ts) => new Date(ts).toLocaleTimeString());
+        const labels = this.dataBuffer.timestamps.map((ts) => new Date(ts));
+
+        // Sicherstellen, dass wir nicht versuchen, leere Daten zu übergeben
+        if (this.dataBuffer.x.length === 0) return;
 
         // Aktualisiere die Daten und Labels im Graphen
         this.chart.data.labels = labels;
