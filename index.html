@@ -6,41 +6,9 @@
   <title>Accelerometer Test</title>
   <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    #output {
-      font-size: 1.2em;
-      margin: 10px 0;
-    }
-    #accelerationChart {
-      width: 100vw;
-      height: 80vh;
-    }
-    #data-text {
-      font-size: 1em;
-      text-align: center;
-      margin-top: 10px;
-    }
-    #history {
-      margin-top: 20px;
-      font-size: 0.9em;
-      text-align: center;
-    }
-    .history-entry {
-      margin-bottom: 5px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div id="output">Prüfe auf Sensor...</div>
   <canvas id="accelerationChart"></canvas>
