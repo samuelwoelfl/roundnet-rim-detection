@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accelerometer Test</title>
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Accelerometer Test</h1>
+  <p>Überprüfen, ob dein Gerät ein Accelerometer hat.</p>
+  <div id="output">Prüfe auf Sensor...</div>
+
+  <script>
+    class AccelerometerApp {
+      constructor() {
+        this.$output = $('#output');
+        this.init();
+      }
+  
+      async init() {
+        if ('DeviceMotionEvent' in window) {
+          // Prüfen, ob Berechtigungen erforderlich sind
+          if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+              const permissionState = await DeviceMotionEvent.requestPermission();
+              if (permissionState === 'granted') {
+                this.showMessage('Accelerometer verfügbar! Live-Daten:');
+                this.createDataContainer();
+                this.setupDeviceMotionListener();
+              } else {
+                this.showMessage('Berechtigung für Bewegungsdaten verweigert.');
+              }
+            } catch (err) {
+              console.error('Fehler beim Anfordern der Berechtigung:', err);
+              this.showMessage('Berechtigungsanforderung fehlgeschlagen.');
+            }
+          } else {
+            // Für Browser, die keine Berechtigung benötigen
+            this.showMessage('Accelerometer verfügbar! Live-Daten:');
+            this.createDataContainer();
+            this.setupDeviceMotionListener();
+          }
+        } else {
+          this.showMessage('Kein Accelerometer auf diesem Gerät gefunden.');
+        }
+      }
+  
+      showMessage(message) {
+        this.$output.text(message);
+      }
+  
+      createDataContainer() {
+        this.$dataDiv = $('<div id="data"></div>');
+        $('body').append(this.$dataDiv);
+      }
+  
+      setupDeviceMotionListener() {
+        $(window).on('devicemotion', (event) => {
+          const { x, y, z } = event.originalEvent.acceleration || {};
+          if (x !== null && y !== null && z !== null) {
+            this.updateData(x, y, z);
+          } else {
+            this.$dataDiv.text('Keine Bewegungsdaten verfügbar.');
+          }
+        });
+      }
+  
+      updateData(x, y, z) {
+        this.$dataDiv.html(`
+          <p>X: ${x.toFixed(2)}</p>
+          <p>Y: ${y.toFixed(2)}</p>
+          <p>Z: ${z.toFixed(2)}</p>
+        `);
+      }
+    }
+  
+    // Starte die Anwendung
+    $(document).ready(() => {
+      new AccelerometerApp();
+    });
+  </script>
+</body>
+</html>
