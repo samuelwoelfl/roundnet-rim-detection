@@ -23,18 +23,25 @@
     }
     #accelerationChart {
       width: 100vw;
-      height: 100vh;
+      height: 40vh;
+    }
+    #data-text {
+      font-size: 1em;
+      text-align: center;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div id="output">Prüfe auf Sensor...</div>
   <canvas id="accelerationChart"></canvas>
+  <div id="data-text">Warte auf Daten...</div>
 
   <script>
     class AccelerometerApp {
       constructor() {
         this.$output = $('#output');
+        this.$dataText = $('#data-text');
         this.dataBuffer = {
           timestamps: [],
           x: [],
@@ -105,8 +112,18 @@
           this.dataBuffer.z.shift();
         }
 
-        // Aktualisiere den Graphen
+        // Aktualisiere den Graphen und den Text
         this.updateChart();
+        this.updateDataText(x, y, z);
+      }
+
+      updateDataText(x, y, z) {
+        this.$dataText.html(`
+          <p><strong>Live-Daten:</strong></p>
+          <p>X: ${x.toFixed(2)} m/s²</p>
+          <p>Y: ${y.toFixed(2)} m/s²</p>
+          <p>Z: ${z.toFixed(2)} m/s²</p>
+        `);
       }
 
       initChart() {
@@ -153,7 +170,9 @@
                 title: {
                   display: true,
                   text: 'Beschleunigung (m/s²)'
-                }
+                },
+                min: -20, // Feste Untergrenze der Y-Achse
+                max: 20   // Feste Obergrenze der Y-Achse
               }
             },
             plugins: {
