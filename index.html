@@ -129,9 +129,9 @@
             var oldMessage = this.$output.html()
             this.showMessage('Tippen erkannt!');
             this.lastTapTime = 0; // Reset für den nächsten Tap
-            setTimeout(function() {
-              this.showMessage('test');
-            }, 2000); // 2000 Millisekunden = 2 Sekunden
+            setTimeout(() => {
+              this.showMessage(oldMessage);
+            }, 2000);
           } else {
             this.lastTapTime = currentTime;
           }
