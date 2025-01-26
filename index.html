@@ -126,12 +126,11 @@
 
           // Prüfe, ob die Zeitspanne zwischen den Taps kurz genug ist
           if (currentTime - this.lastTapTime < this.tapInterval) {
-            console.log('Tap erkannt!');
             var oldMessage = this.$output.html()
             this.showMessage('Tippen erkannt!');
             this.lastTapTime = 0; // Reset für den nächsten Tap
             setTimeout(function() {
-              this.showMessage(oldMessage);
+              this.showMessage('test');
             }, 2000); // 2000 Millisekunden = 2 Sekunden
           } else {
             this.lastTapTime = currentTime;
