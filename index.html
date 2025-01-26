@@ -33,7 +33,7 @@
         this.chart = null;
         this.maxHistoryLength = 10;  // Begrenze die Historie auf 10 Einträge
         this.lastTapTime = 0;  // Zeitpunkt des letzten erkannten Taps
-        this.tapThreshold = 2;  // Minimum Beschleunigungswert für ein Tap
+        this.tapThreshold = 0.2;  // Minimum Beschleunigungswert für ein Tap
         this.tapInterval = 200;  // Maximale Zeitspanne zwischen zwei Taps in Millisekunden
         this.init();
       }
@@ -127,8 +127,12 @@
           // Prüfe, ob die Zeitspanne zwischen den Taps kurz genug ist
           if (currentTime - this.lastTapTime < this.tapInterval) {
             console.log('Tap erkannt!');
+            var oldMessage = this.$output.html()
             this.showMessage('Tippen erkannt!');
             this.lastTapTime = 0; // Reset für den nächsten Tap
+            setTimeout(function() {
+              this.showMessage(oldMessage);
+            }, 2000); // 2000 Millisekunden = 2 Sekunden
           } else {
             this.lastTapTime = currentTime;
           }
