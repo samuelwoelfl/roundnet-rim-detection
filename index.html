@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accelerometer Test</title>
   <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -15,30 +16,39 @@
       margin-top: 20px;
       font-size: 1.2em;
     }
+    canvas {
+      max-width: 100%;
+      margin: 20px auto;
+    }
   </style>
 </head>
 <body>
   <h1>Accelerometer Test</h1>
   <p>Überprüfen, ob dein Gerät ein Accelerometer hat.</p>
   <div id="output">Prüfe auf Sensor...</div>
+  <canvas id="accelerationChart"></canvas>
 
   <script>
     class AccelerometerApp {
       constructor() {
         this.$output = $('#output');
+        this.dataBuffer = {
+          timestamps: [],
+          x: [],
+          y: [],
+          z: []
+        };
+        this.chart = null;
         this.init();
       }
-  
+
       async init() {
         if ('DeviceMotionEvent' in window) {
-          // Prüfen, ob Berechtigungen erforderlich sind
           if (typeof DeviceMotionEvent.requestPermission === 'function') {
             try {
               const permissionState = await DeviceMotionEvent.requestPermission();
               if (permissionState === 'granted') {
-                this.showMessage('Accelerometer verfügbar! Live-Daten:');
-                this.createDataContainer();
-                this.setupDeviceMotionListener();
+                this.startApp();
               } else {
                 this.showMessage('Berechtigung für Bewegungsdaten verweigert.');
               }
@@ -47,25 +57,29 @@
               this.showMessage('Berechtigungsanforderung fehlgeschlagen.');
             }
           } else {
-            // Für Browser, die keine Berechtigung benötigen
-            this.showMessage('Accelerometer verfügbar! Live-Daten:');
-            this.createDataContainer();
-            this.setupDeviceMotionListener();
+            this.startApp();
           }
         } else {
           this.showMessage('Kein Accelerometer auf diesem Gerät gefunden.');
         }
       }
-  
+
+      startApp() {
+        this.showMessage('Accelerometer verfügbar! Live-Daten:');
+        this.createDataContainer();
+        this.initChart();
+        this.setupDeviceMotionListener();
+      }
+
       showMessage(message) {
         this.$output.text(message);
       }
-  
+
       createDataContainer() {
         this.$dataDiv = $('<div id="data"></div>');
         $('body').append(this.$dataDiv);
       }
-  
+
       setupDeviceMotionListener() {
         $(window).on('devicemotion', (event) => {
           const { x, y, z } = event.originalEvent.acceleration || {};
@@ -76,16 +90,91 @@
           }
         });
       }
-  
+
       updateData(x, y, z) {
+        const timestamp = new Date().toLocaleTimeString();
+
+        // Aktualisiere die Datenanzeige
         this.$dataDiv.html(`
           <p>X: ${x.toFixed(2)}</p>
           <p>Y: ${y.toFixed(2)}</p>
           <p>Z: ${z.toFixed(2)}</p>
         `);
+
+        // Speichere Daten im Verlauf
+        this.dataBuffer.timestamps.push(timestamp);
+        this.dataBuffer.x.push(x);
+        this.dataBuffer.y.push(y);
+        this.dataBuffer.z.push(z);
+
+        // Entferne alte Daten, um die Anzeige flüssig zu halten
+        if (this.dataBuffer.timestamps.length > 50) {
+          this.dataBuffer.timestamps.shift();
+          this.dataBuffer.x.shift();
+          this.dataBuffer.y.shift();
+          this.dataBuffer.z.shift();
+        }
+
+        // Aktualisiere den Graphen
+        this.updateChart();
+      }
+
+      initChart() {
+        const ctx = document.getElementById('accelerationChart').getContext('2d');
+        this.chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [], // Zeitstempel
+            datasets: [
+              {
+                label: 'X-Achse',
+                data: [],
+                borderColor: 'red',
+                fill: false,
+              },
+              {
+                label: 'Y-Achse',
+                data: [],
+                borderColor: 'green',
+                fill: false,
+              },
+              {
+                label: 'Z-Achse',
+                data: [],
+                borderColor: 'blue',
+                fill: false,
+              },
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Zeit'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Beschleunigung (m/s²)'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      updateChart() {
+        this.chart.data.labels = this.dataBuffer.timestamps;
+        this.chart.data.datasets[0].data = this.dataBuffer.x;
+        this.chart.data.datasets[1].data = this.dataBuffer.y;
+        this.chart.data.datasets[2].data = this.dataBuffer.z;
+        this.chart.update();
       }
     }
-  
+
     // Starte die Anwendung
     $(document).ready(() => {
       new AccelerometerApp();
