@@ -14,8 +14,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      height: 66vw;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
     }
     #output {
       font-size: 1.2em;
@@ -23,12 +24,20 @@
     }
     #accelerationChart {
       width: 100vw;
-      height: 40vh;
+      height: 80vh;
     }
     #data-text {
       font-size: 1em;
       text-align: center;
       margin-top: 10px;
+    }
+    #history {
+      margin-top: 20px;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    .history-entry {
+      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -36,12 +45,17 @@
   <div id="output">Prüfe auf Sensor...</div>
   <canvas id="accelerationChart"></canvas>
   <div id="data-text">Warte auf Daten...</div>
+  <div id="history">
+    <h3>Historie der letzten 10 Sekunden:</h3>
+    <div id="history-entries"></div>
+  </div>
 
   <script>
     class AccelerometerApp {
       constructor() {
         this.$output = $('#output');
         this.$dataText = $('#data-text');
+        this.$historyEntries = $('#history-entries');
         this.dataBuffer = {
           timestamps: [],
           x: [],
@@ -49,6 +63,10 @@
           z: []
         };
         this.chart = null;
+        this.maxHistoryLength = 10;  // Begrenze die Historie auf 10 Einträge
+        this.lastTapTime = 0;  // Zeitpunkt des letzten erkannten Taps
+        this.tapThreshold = 15;  // Minimum Beschleunigungswert für ein Tap
+        this.tapInterval = 200;  // Maximale Zeitspanne zwischen zwei Taps in Millisekunden
         this.init();
       }
 
@@ -96,34 +114,83 @@
       }
 
       updateData(x, y, z) {
-        const timestamp = new Date().toLocaleTimeString();
+        const now = Date.now(); // Zeitstempel in Millisekunden
 
-        // Speichere Daten im Verlauf
-        this.dataBuffer.timestamps.push(timestamp);
+        // Speichere die aktuellen Werte im Verlauf
+        this.dataBuffer.timestamps.push(now);
         this.dataBuffer.x.push(x);
         this.dataBuffer.y.push(y);
         this.dataBuffer.z.push(z);
 
-        // Begrenze die Anzahl der Punkte auf 50, um den Graphen übersichtlich zu halten
-        if (this.dataBuffer.timestamps.length > 500) {
+        // Entferne Daten, die älter als 10 Sekunden sind
+        const tenSecondsAgo = now - 10000; // 10 Sekunden in Millisekunden
+        while (this.dataBuffer.timestamps[0] < tenSecondsAgo) {
           this.dataBuffer.timestamps.shift();
           this.dataBuffer.x.shift();
           this.dataBuffer.y.shift();
           this.dataBuffer.z.shift();
         }
 
-        // Aktualisiere den Graphen und den Text
+        // Begrenze die Historie auf die letzten maxHistoryLength Einträge
+        if (this.dataBuffer.timestamps.length > this.maxHistoryLength) {
+          this.dataBuffer.timestamps.shift();
+          this.dataBuffer.x.shift();
+          this.dataBuffer.y.shift();
+          this.dataBuffer.z.shift();
+        }
+
+        // Überprüfe auf ein Tippen
+        this.checkForTap(x, y, z);
+
+        // Aktualisiere den Graphen, den Text und die Historie
         this.updateChart();
         this.updateDataText(x, y, z);
+        this.updateHistory();
       }
 
-      updateDataText() {
+      checkForTap(x, y, z) {
+        // Berechne die Gesamtbeschleunigung (magnitude)
+        const magnitude = Math.sqrt(x * x + y * y + z * z);
+
+        // Prüfe, ob die Beschleunigung über dem Schwellenwert liegt
+        if (magnitude > this.tapThreshold) {
+          const currentTime = Date.now();
+
+          // Prüfe, ob die Zeitspanne zwischen den Taps kurz genug ist
+          if (currentTime - this.lastTapTime < this.tapInterval) {
+            console.log('Tap erkannt!');
+            this.showMessage('Tippen erkannt!');
+            this.lastTapTime = 0; // Reset für den nächsten Tap
+          } else {
+            this.lastTapTime = currentTime;
+          }
+        }
+      }
+
+      updateDataText(x, y, z) {
         this.$dataText.html(`
           <p><strong>Live-Daten:</strong></p>
-          <p>X: ${this.dataBuffer.x} m/s²</p>
-          <p>Y: ${this.dataBuffer.y} m/s²</p>
-          <p>Z: ${this.dataBuffer.z} m/s²</p>
+          <p>X: ${x.toFixed(2)} m/s²</p>
+          <p>Y: ${y.toFixed(2)} m/s²</p>
+          <p>Z: ${z.toFixed(2)} m/s²</p>
         `);
+      }
+
+      updateHistory() {
+        // Bereite die Historie als Text vor und begrenze sie auf maxHistoryLength
+        this.$historyEntries.empty(); // Vorherige Historie löschen
+
+        for (let i = 0; i < this.dataBuffer.timestamps.length; i++) {
+          const timestamp = new Date(this.dataBuffer.timestamps[i]).toLocaleTimeString();
+          const entry = `
+            <div class="history-entry">
+              <strong>${timestamp}</strong>: X = ${this.dataBuffer.x[i].toFixed(2)} m/s², 
+              Y = ${this.dataBuffer.y[i].toFixed(2)} m/s², 
+              Z = ${this.dataBuffer.z[i].toFixed(2)} m/s²
+            </div>
+          `;
+          this.$historyEntries.append(entry);
+        }
       }
 
       initChart() {
@@ -153,31 +220,33 @@
                 borderColor: 'blue',
                 borderWidth: 2,
                 fill: false,
-              },
+              }
             ]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: false,
             scales: {
               x: {
-                title: {
-                  display: true,
-                  text: 'Zeit'
+                type: 'linear',
+                position: 'bottom',
+                ticks: {
+                  autoSkip: true,
+                  maxTicksLimit: 20,
                 }
               },
               y: {
-                title: {
-                  display: true,
-                  text: 'Beschleunigung (m/s²)'
-                },
-                min: -20, // Feste Untergrenze der Y-Achse
-                max: 20   // Feste Obergrenze der Y-Achse
+                min: -20,
+                max: 20
               }
             },
-            plugins: {
-              legend: {
-                position: 'top',
+            responsive: true,
+            maintainAspectRatio: false,
+            animations: {
+              tension: {
+                duration: 500,
+                easing: 'linear',
+                from: 1,
+                to: 0,
+                loop: true
               }
             }
           }
@@ -185,10 +254,22 @@
       }
 
       updateChart() {
-        this.chart.data.labels = this.dataBuffer.timestamps;
-        this.chart.data.datasets[0].data = this.dataBuffer.x;
-        this.chart.data.datasets[1].data = this.dataBuffer.y;
-        this.chart.data.datasets[2].data = this.dataBuffer.z;
+        const now = Date.now();
+
+        // Füge den neuen Datenpunkt zum Diagramm hinzu
+        this.chart.data.labels.push(now);
+        this.chart.data.datasets[0].data.push(this.dataBuffer.x[this.dataBuffer.x.length - 1]);
+        this.chart.data.datasets[1].data.push(this.dataBuffer.y[this.dataBuffer.y.length - 1]);
+        this.chart.data.datasets[2].data.push(this.dataBuffer.z[this.dataBuffer.z.length - 1]);
+
+        // Halte die letzten maxHistoryLength Daten im Diagramm
+        if (this.chart.data.labels.length > this.maxHistoryLength) {
+          this.chart.data.labels.shift();
+          this.chart.data.datasets[0].data.shift();
+          this.chart.data.datasets[1].data.shift();
+          this.chart.data.datasets[2].data.shift();
+        }
+
         this.chart.update();
       }
     }
