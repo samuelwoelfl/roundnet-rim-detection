@@ -63,6 +63,7 @@
           z: []
         };
         this.chart = null;
+        this.maxHistoryLength = 10;  // Begrenze die Historie auf 10 Einträge
         this.init();
       }
 
@@ -127,6 +128,14 @@
           this.dataBuffer.z.shift();
         }
 
+        // Begrenze die Historie auf die letzten maxHistoryLength Einträge
+        if (this.dataBuffer.timestamps.length > this.maxHistoryLength) {
+          this.dataBuffer.timestamps.shift();
+          this.dataBuffer.x.shift();
+          this.dataBuffer.y.shift();
+          this.dataBuffer.z.shift();
+        }
+
         // Aktualisiere den Graphen, den Text und die Historie
         this.updateChart();
         this.updateDataText(x, y, z);
@@ -143,7 +152,7 @@
       }
 
       updateHistory() {
-        // Bereite die Historie als Text vor
+        // Bereite die Historie als Text vor und begrenze sie auf maxHistoryLength
         this.$historyEntries.empty(); // Vorherige Historie löschen
 
         for (let i = 0; i < this.dataBuffer.timestamps.length; i++) {
