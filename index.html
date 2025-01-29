@@ -24,20 +24,21 @@
         this.$output = $('#output');
         this.$dataText = $('#data-text');
         this.$historyEntries = $('#history-entries');
-        this.dataBuffer = {
-          timestamps: [],
-          x: [],
-          y: [],
-          z: []
-        };
+        this.dataBuffer = [];
+        this.isRecording = false;
         this.chart = null;
-        this.maxHistoryLength = 10;  // Begrenze die Historie auf 10 Einträge
-        this.lastTapTime = 0;  // Zeitpunkt des letzten erkannten Taps
-        this.tapThreshold = 0.2;  // Minimum Beschleunigungswert für ein Tap
-        this.tapInterval = 200;  // Maximale Zeitspanne zwischen zwei Taps in Millisekunden
+        this.maxHistoryLength = 10;
+    
+        // Buttons initialisieren
+        this.$startButton = $('#startButton');
+        this.$stopButton = $('#stopButton');
+    
+        this.$startButton.on('click', () => this.startRecording());
+        this.$stopButton.on('click', () => this.stopAndDownload());
+    
         this.init();
       }
-
+    
       async init() {
         if ('DeviceMotionEvent' in window) {
           if (typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -59,85 +60,77 @@
           this.showMessage('Kein Accelerometer auf diesem Gerät gefunden.');
         }
       }
-
+    
       startApp() {
         this.showMessage('Accelerometer verfügbar! Live-Daten:');
         this.initChart();
         this.setupDeviceMotionListener();
       }
-
+    
       showMessage(message) {
         this.$output.text(message);
       }
-
+    
       setupDeviceMotionListener() {
         $(window).on('devicemotion', (event) => {
+          if (!this.isRecording) return; // Nur speichern, wenn die Aufnahme aktiv ist
+    
           const { x, y, z } = event.originalEvent.acceleration || {};
           if (x !== null && y !== null && z !== null) {
             this.updateData(x, y, z);
-          } else {
-            this.showMessage('Keine Bewegungsdaten verfügbar.');
           }
         });
       }
-
+    
+      startRecording() {
+        this.dataBuffer = []; // Alte Daten löschen
+        this.isRecording = true;
+        this.$startButton.prop('disabled', true);
+        this.$stopButton.prop('disabled', false);
+        this.showMessage('Aufnahme läuft...');
+      }
+    
+      stopAndDownload() {
+        this.isRecording = false;
+        this.$startButton.prop('disabled', false);
+        this.$stopButton.prop('disabled', true);
+        this.showMessage('Aufnahme gestoppt. Daten werden heruntergeladen...');
+        this.downloadData();
+      }
+    
       updateData(x, y, z) {
-        const now = Date.now(); // Zeitstempel in Millisekunden
-
-        // Speichere die aktuellen Werte im Verlauf
-        this.dataBuffer.timestamps.push(now);
-        this.dataBuffer.x.push(x);
-        this.dataBuffer.y.push(y);
-        this.dataBuffer.z.push(z);
-
-        // Entferne Daten, die älter als 10 Sekunden sind
-        const tenSecondsAgo = now - 10000; // 10 Sekunden in Millisekunden
-        while (this.dataBuffer.timestamps[0] < tenSecondsAgo) {
-          this.dataBuffer.timestamps.shift();
-          this.dataBuffer.x.shift();
-          this.dataBuffer.y.shift();
-          this.dataBuffer.z.shift();
-        }
-
-        // Begrenze die Historie auf die letzten maxHistoryLength Einträge
-        if (this.dataBuffer.timestamps.length > this.maxHistoryLength) {
-          this.dataBuffer.timestamps.shift();
-          this.dataBuffer.x.shift();
-          this.dataBuffer.y.shift();
-          this.dataBuffer.z.shift();
-        }
-
-        // Überprüfe auf ein Tippen
-        this.checkForTap(x, y, z);
-
-        // Aktualisiere den Graphen, den Text und die Historie
+        const timestamp = new Date().toISOString();
+    
+        this.dataBuffer.push({ timestamp, x, y, z });
+    
+        // Historie aktualisieren
         this.updateChart();
         this.updateDataText(x, y, z);
         this.updateHistory();
       }
-
-      checkForTap(x, y, z) {
-        // Berechne die Gesamtbeschleunigung (magnitude)
-        const magnitude = Math.sqrt(x * x + y * y + z * z);
-
-        // Prüfe, ob die Beschleunigung über dem Schwellenwert liegt
-        if (magnitude > this.tapThreshold) {
-          const currentTime = Date.now();
-
-          // Prüfe, ob die Zeitspanne zwischen den Taps kurz genug ist
-          if (currentTime - this.lastTapTime < this.tapInterval) {
-            var oldMessage = this.$output.html()
-            this.showMessage('Tippen erkannt!');
-            this.lastTapTime = 0; // Reset für den nächsten Tap
-            setTimeout(() => {
-              this.showMessage(oldMessage);
-            }, 2000);
-          } else {
-            this.lastTapTime = currentTime;
-          }
+    
+      downloadData() {
+        if (this.dataBuffer.length === 0) {
+          alert("Keine Daten zum Speichern.");
+          return;
         }
+    
+        const jsonData = JSON.stringify(this.dataBuffer, null, 2);
+        const blob = new Blob([jsonData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "sensor_data.json";
+        document.body.appendChild(a);
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    
+        this.showMessage("Daten gespeichert. Drücke Start für eine neue Aufnahme.");
       }
-
+    
       updateDataText(x, y, z) {
         this.$dataText.html(`
           <p><strong>Live-Daten:</strong></p>
@@ -146,105 +139,68 @@
           <p>Z: ${z.toFixed(2)} m/s²</p>
         `);
       }
-
+    
       updateHistory() {
-        // Bereite die Historie als Text vor und begrenze sie auf maxHistoryLength
-        this.$historyEntries.empty(); // Vorherige Historie löschen
-
-        for (let i = 0; i < this.dataBuffer.timestamps.length; i++) {
-          const timestamp = new Date(this.dataBuffer.timestamps[i]).toLocaleTimeString();
+        this.$historyEntries.empty();
+        for (let i = Math.max(0, this.dataBuffer.length - this.maxHistoryLength); i < this.dataBuffer.length; i++) {
+          const { timestamp, x, y, z } = this.dataBuffer[i];
           const entry = `
             <div class="history-entry">
-              <strong>${timestamp}</strong>: X = ${this.dataBuffer.x[i].toFixed(2)} m/s², 
-              Y = ${this.dataBuffer.y[i].toFixed(2)} m/s², 
-              Z = ${this.dataBuffer.z[i].toFixed(2)} m/s²
+              <strong>${new Date(timestamp).toLocaleTimeString()}</strong>: 
+              X = ${x.toFixed(2)} m/s², 
+              Y = ${y.toFixed(2)} m/s², 
+              Z = ${z.toFixed(2)} m/s²
             </div>
           `;
           this.$historyEntries.append(entry);
         }
       }
-
+    
       initChart() {
         const ctx = document.getElementById('accelerationChart').getContext('2d');
         this.chart = new Chart(ctx, {
           type: 'line',
           data: {
-            labels: [], // Zeitstempel
+            labels: [],
             datasets: [
-              {
-                label: 'X-Achse',
-                data: [],
-                borderColor: 'red',
-                borderWidth: 2,
-                fill: false,
-              },
-              {
-                label: 'Y-Achse',
-                data: [],
-                borderColor: 'green',
-                borderWidth: 2,
-                fill: false,
-              },
-              {
-                label: 'Z-Achse',
-                data: [],
-                borderColor: 'blue',
-                borderWidth: 2,
-                fill: false,
-              }
+              { label: 'X-Achse', data: [], borderColor: 'red', borderWidth: 2, fill: false },
+              { label: 'Y-Achse', data: [], borderColor: 'green', borderWidth: 2, fill: false },
+              { label: 'Z-Achse', data: [], borderColor: 'blue', borderWidth: 2, fill: false }
             ]
           },
           options: {
             scales: {
-              x: {
-                type: 'linear',
-                position: 'bottom',
-                ticks: {
-                  autoSkip: true,
-                  maxTicksLimit: 20,
-                }
-              },
-              y: {
-                min: -20,
-                max: 20
-              }
+              x: { type: 'linear', position: 'bottom' },
+              y: { min: -20, max: 20 }
             },
             responsive: true,
-            maintainAspectRatio: false,
-            animations: {
-              tension: {
-                duration: 500,
-                easing: 'linear',
-                from: 1,
-                to: 0,
-                loop: true
-              }
-            }
+            maintainAspectRatio: false
           }
         });
       }
-
+    
       updateChart() {
-        const now = Date.now();
-
-        // Füge den neuen Datenpunkt zum Diagramm hinzu
-        this.chart.data.labels.push(now);
-        this.chart.data.datasets[0].data.push(this.dataBuffer.x[this.dataBuffer.x.length - 1]);
-        this.chart.data.datasets[1].data.push(this.dataBuffer.y[this.dataBuffer.y.length - 1]);
-        this.chart.data.datasets[2].data.push(this.dataBuffer.z[this.dataBuffer.z.length - 1]);
-
-        // Halte die letzten maxHistoryLength Daten im Diagramm
+        if (this.dataBuffer.length === 0) return;
+    
+        const lastEntry = this.dataBuffer[this.dataBuffer.length - 1];
+        const timestamp = new Date(lastEntry.timestamp).toLocaleTimeString();
+    
+        this.chart.data.labels.push(timestamp);
+        this.chart.data.datasets[0].data.push(lastEntry.x);
+        this.chart.data.datasets[1].data.push(lastEntry.y);
+        this.chart.data.datasets[2].data.push(lastEntry.z);
+    
         if (this.chart.data.labels.length > this.maxHistoryLength) {
           this.chart.data.labels.shift();
           this.chart.data.datasets[0].data.shift();
           this.chart.data.datasets[1].data.shift();
           this.chart.data.datasets[2].data.shift();
         }
-
+    
         this.chart.update();
       }
     }
-
+    
     // Starte die Anwendung
     $(document).ready(() => {
       new AccelerometerApp();
