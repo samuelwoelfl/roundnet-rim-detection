@@ -31,7 +31,7 @@
         this.dataBuffer = [];
         this.isRecording = false;
         this.chart = null;
-        this.maxHistoryLength = 10;
+        this.maxHistoryLength = 100; // Mehr Punkte für flüssige Kurven
     
         // Buttons initialisieren
         this.$startButton = $('#startButton');
@@ -77,7 +77,7 @@
     
       setupDeviceMotionListener() {
         $(window).on('devicemotion', (event) => {
-          if (!this.isRecording) return; // Nur speichern, wenn die Aufnahme aktiv ist
+          if (!this.isRecording) return;
     
           const { x, y, z } = event.originalEvent.acceleration || {};
           if (x !== null && y !== null && z !== null) {
@@ -87,10 +87,13 @@
       }
     
       startRecording() {
-        this.dataBuffer = []; // Alte Daten löschen
+        this.dataBuffer = [];
         this.isRecording = true;
         this.$startButton.prop('disabled', true);
         this.$stopButton.prop('disabled', false);
+        this.chart.data.labels = [];
+        this.chart.data.datasets.forEach((dataset) => dataset.data = []);
+        this.chart.update();
         this.showMessage('Aufnahme läuft...');
       }
     
@@ -104,11 +107,10 @@
     
       updateData(x, y, z) {
         const timestamp = new Date().toISOString();
-    
         this.dataBuffer.push({ timestamp, x, y, z });
     
-        // Historie aktualisieren
-        this.updateChart();
+        // Aktualisiere den Chart
+        this.updateChart(x, y, z);
         this.updateDataText(x, y, z);
         this.updateHistory();
       }
@@ -167,14 +169,15 @@
           data: {
             labels: [],
             datasets: [
-              { label: 'X-Achse', data: [], borderColor: 'red', borderWidth: 2, fill: false },
-              { label: 'Y-Achse', data: [], borderColor: 'green', borderWidth: 2, fill: false },
-              { label: 'Z-Achse', data: [], borderColor: 'blue', borderWidth: 2, fill: false }
+              { label: 'X-Achse', data: [], borderColor: 'red', borderWidth: 2, fill: false, cubicInterpolationMode: 'monotone', pointRadius: 0 },
+              { label: 'Y-Achse', data: [], borderColor: 'green', borderWidth: 2, fill: false, cubicInterpolationMode: 'monotone', pointRadius: 0 },
+              { label: 'Z-Achse', data: [], borderColor: 'blue', borderWidth: 2, fill: false, cubicInterpolationMode: 'monotone', pointRadius: 0 }
             ]
           },
           options: {
+            animation: false,
             scales: {
-              x: { type: 'linear', position: 'bottom' },
+              x: { type: 'linear', position: 'bottom', ticks: { autoSkip: true, maxTicksLimit: 10 } },
               y: { min: -20, max: 20 }
             },
             responsive: true,
@@ -183,16 +186,13 @@
         });
       }
     
-      updateChart() {
-        if (this.dataBuffer.length === 0) return;
-    
-        const lastEntry = this.dataBuffer[this.dataBuffer.length - 1];
-        const timestamp = new Date(lastEntry.timestamp).toLocaleTimeString();
+      updateChart(x, y, z) {
+        const timestamp = new Date().toLocaleTimeString();
     
         this.chart.data.labels.push(timestamp);
-        this.chart.data.datasets[0].data.push(lastEntry.x);
-        this.chart.data.datasets[1].data.push(lastEntry.y);
-        this.chart.data.datasets[2].data.push(lastEntry.z);
+        this.chart.data.datasets[0].data.push(x);
+        this.chart.data.datasets[1].data.push(y);
+        this.chart.data.datasets[2].data.push(z);
     
         if (this.chart.data.labels.length > this.maxHistoryLength) {
           this.chart.data.labels.shift();
