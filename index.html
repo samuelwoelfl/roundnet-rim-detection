@@ -17,6 +17,9 @@
   <button id="startButton">Start</button>
   <button id="stopButton" disabled>Stopp & Download</button>
 
+  <button id="cleanButton">Clean</button>
+  <button id="notCleanButton">Not Clean</button>
+
   <div id="history">
     <h3>Historie der letzten 10 Sekunden:</h3>
     <div id="history-entries"></div>
@@ -29,16 +32,21 @@
         this.$dataText = $('#data-text');
         this.$historyEntries = $('#history-entries');
         this.dataBuffer = [];
+        this.labelBuffer = []; // Neuer Speicher für "Clean"/"Not Clean"
         this.isRecording = false;
         this.chart = null;
-        this.maxHistoryLength = 100; // Mehr Punkte für flüssige Kurven
+        this.maxHistoryLength = 100; 
     
         // Buttons initialisieren
         this.$startButton = $('#startButton');
         this.$stopButton = $('#stopButton');
+        this.$cleanButton = $('#cleanButton');
+        this.$notCleanButton = $('#notCleanButton');
     
         this.$startButton.on('click', () => this.startRecording());
         this.$stopButton.on('click', () => this.stopAndDownload());
+        this.$cleanButton.on('click', () => this.saveLabel("Clean"));
+        this.$notCleanButton.on('click', () => this.saveLabel("Not Clean"));
     
         this.init();
       }
@@ -88,6 +96,7 @@
     
       startRecording() {
         this.dataBuffer = [];
+        this.labelBuffer = []; // Leere Labels bei neuem Start
         this.isRecording = true;
         this.$startButton.prop('disabled', true);
         this.$stopButton.prop('disabled', false);
@@ -109,10 +118,18 @@
         const timestamp = new Date().toISOString();
         this.dataBuffer.push({ timestamp, x, y, z });
     
-        // Aktualisiere den Chart
         this.updateChart(x, y, z);
         this.updateDataText(x, y, z);
         this.updateHistory();
+      }
+    
+      saveLabel(label) {
+        if (!this.isRecording) return;
+    
+        const timestamp = new Date().toISOString();
+        this.labelBuffer.push({ timestamp, label });
+    
+        console.log(`Label gespeichert: ${label} um ${timestamp}`);
       }
     
       downloadData() {
@@ -122,19 +139,26 @@
         }
     
         const jsonData = JSON.stringify(this.dataBuffer, null, 2);
-        const blob = new Blob([jsonData], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "sensor_data.json";
-        document.body.appendChild(a);
-        a.click();
-        
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const labelsData = JSON.stringify(this.labelBuffer, null, 2);
+    
+        this.downloadFile(jsonData, "sensor_data.json");
+        this.downloadFile(labelsData, "labels.json");
     
         this.showMessage("Daten gespeichert. Drücke Start für eine neue Aufnahme.");
+      }
+    
+      downloadFile(data, filename) {
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+    
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+    
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
     
       updateDataText(x, y, z) {
