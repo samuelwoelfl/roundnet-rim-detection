@@ -34,3 +34,12 @@ body {
 .history-entry {
   margin-bottom: 5px;
 }
+
+#cleanButton {
+  margin-top: 30px
+}
+
+#cleanButton,
+#notCleanButton {
+  padding: 25px;
+}
