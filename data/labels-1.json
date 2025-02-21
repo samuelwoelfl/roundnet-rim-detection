@@ -1,0 +1,126 @@
+[
+  {
+    "timestamp": "2025-02-10T16:14:03.297Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:07.325Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:12.973Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:16.972Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:20.091Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:28.241Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:33.058Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:40.362Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:44.671Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:49.052Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:14:54.255Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:06.692Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:16.402Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:23.036Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:30.940Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:35.972Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:39.506Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:47.217Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:52.255Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:15:57.533Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:04.717Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:13.469Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:18.005Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:31.818Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:42.134Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:47.753Z",
+    "label": "Not Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:16:56.184Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:17:00.417Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:17:04.314Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:17:08.530Z",
+    "label": "Clean"
+  },
+  {
+    "timestamp": "2025-02-10T16:17:12.682Z",
+    "label": "Clean"
+  }
+]

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: white;
+    }
+    body.clean {
+        background-color: green;
+    }
+    body.not_clean {
+        background-color: red;
+    }
+
+    body.unknown {
+        background-color: gray;
+    }
+  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibrations-Klassifikation</title>
+    <script>
+      $(document).ready(function() {
+        let gyroData = { x: [], y: [], z: [] };
+        const packetSize = 50; // Größe jedes Datenpakets
+        const overlap = packetSize / 2; // Überlappung zwischen Paketen
+        let dataBuffer = { x: [], y: [], z: [] }; // Puffer für die Gyroskopdaten
+    
+        //  Gyroskop-Daten sammeln und im Puffer speichern
+        $(window).on("devicemotion", function(event) {
+            let acc = event.originalEvent.accelerationIncludingGravity;
+            if (acc) {
+                dataBuffer.x.push(acc.x || 0);
+                dataBuffer.y.push(acc.y || 0);
+                dataBuffer.z.push(acc.z || 0);
+    
+                // Wenn der Puffer voll genug ist, Datenpakete senden
+                while (dataBuffer.x.length >= packetSize) {
+                    sendData(createPacket());
+                }
+            }
+        });
+    
+        // Funktion zum Erstellen eines Datenpakets mit Überlappung
+        function createPacket() {
+            let packet = { x: [], y: [], z: [], a_total: [] };
+            const startIndex = dataBuffer.x.length - packetSize; // Startindex für das Paket
+            for (let i = 0; i < packetSize; i++) {
+              let x = dataBuffer.x[startIndex + i];
+              let y = dataBuffer.y[startIndex + i];
+              let z = dataBuffer.z[startIndex + i];
+  
+              // Berechne die Gesamtbeschleunigung
+              let a_total = Math.sqrt(x * x + y * y + z * z);
+  
+              // Füge x, y, z und die Gesamtbeschleunigung dem Packet hinzu
+              packet.x.push(x);
+              packet.y.push(y);
+              packet.z.push(z);
+              packet.a_total.push(a_total);  // Speichere Gesamtbeschleunigung
+            }
+    
+            // Entferne die alten Daten aus dem Puffer (mit Überlappung)
+            dataBuffer.x.splice(0, packetSize - overlap);
+            dataBuffer.y.splice(0, packetSize - overlap);
+            dataBuffer.z.splice(0, packetSize - overlap);
+    
+            return packet;
+        }
+    
+        //  Daten an Flask senden (angepasst für Pakete)
+        function sendData(packet) {
+            $.ajax({
+                url: "/predict",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(packet), // Sende das Paket
+                success: function(result) {
+                  let result_name;
+                  if (result.prediction == 0) {
+                      result_name = 'chill';
+                  } else if (result.prediction == 1) {
+                      result_name = 'clean';
+                  } else if (result.prediction == 2) {
+                      result_name = 'not_clean';
+                  } else {
+                      result_name = 'unknown';
+                  }
+  
+                  $("#result").text("Ergebnis: " + result_name);
+                  $("body").removeClass().addClass(result_name);
+                  $("#movement").text(result_name);
+                  $("#confidence").text("Confidence: " + (result.confidence));
+                  let ctx = $("#chart")[0].getContext('2d');
+                  if (window.myChart) {
+                      window.myChart.destroy(); // Zerstöre das alte Diagramm, um Speicherlecks zu vermeiden
+                  }
+                  window.myChart = new Chart(ctx, {
+                      type: 'line',
+                      data: {
+                        labels: Array.from(Array(packet.a_total.length).keys()), // Zeitachse (x-Werte)
+                        datasets: [{
+                            label: 'Gesamtbeschleunigung',
+                            data: packet.a_total,  // Nur die Gesamtbeschleunigung anzeigen
+                            borderColor: 'purple', // Farbwahl für Gesamtbeschleunigung
+                            borderWidth: 1,
+                            fill: false
+                        }]
+                      },
+                      options: {
+                          responsive: true,
+                          animation: false, // Animation deaktivieren
+                          scales: {
+                              x: {
+                                  title: {
+                                      display: true,
+                                      text: 'Datenpunkt'
+                                  }
+                              },
+                              y: {
+                                title: {
+                                    display: true,
+                                    text: 'Gesamtbeschleunigung'
+                                },
+                                min: 0,  // Hier definierst du den minimalen Wert der Y-Achse (z.B. 0)
+                                suggestedMin: 0,  // Der empfohlene minimale Wert, wenn es keine anderen Daten gibt
+                                max: Math.max(...packet.a_total), // Maximale Y-Achse wird dynamisch an die Daten angepasst
+                                suggestedMax: Math.max(...packet.a_total), // Empfohlener maximaler Wert
+                            }
+                          }
+                      }
+                  });
+                },
+                error: function(error) {
+                    console.error("Fehler bei der Anfrage:", error);
+                    $("#result").text("Fehler bei der Vorhersage.");
+                }
+            });
+        }
+    
+        // Keine setInterval mehr nötig, da Pakete ereignisbasiert gesendet werden
+    });
+    </script>
+</head>
+<body>
+    <h1>Live Erschütterungs-Klassifikation</h1>
+    <p id="result">Warte auf Daten...</p>
+    <p id="movement">Bewegung?</p>
+    <p id="confidence"></p>
+    <canvas id="chart"></canvas>
+</body>
+</html>
